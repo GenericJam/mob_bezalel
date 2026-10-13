@@ -28,7 +28,9 @@ defmodule MobBezalel.UI do
   @spec top_bar(String.t(), Palette.cover(), keyword()) :: map()
   def top_bar(title, cover, opts \\ []) do
     c = chrome(cover)
-    trailing = Keyword.get(opts, :trailing) || spacer()
+    # A child slot accepts a list; [] renders nothing (a size-0 Spacer would
+    # flex on both platforms and halve the title's width).
+    trailing = List.wrap(Keyword.get(opts, :trailing))
 
     ~MOB"""
     <Column background={c.bar} padding_left={18} padding_right={18} padding_top={6} padding_bottom={14} fill_width={true}>
@@ -339,8 +341,6 @@ defmodule MobBezalel.UI do
   @doc "The bar colors for the active mode and the given cover."
   @spec chrome(Palette.cover()) :: map()
   def chrome(cover), do: Palette.chrome(MobBezalel.mode() || :dark, cover)
-
-  defp spacer, do: ~MOB(<Spacer size={0} />)
 
   # Scales an ARGB color's alpha (used for inactive tabs on the bar).
   defp fade(argb, factor) do
