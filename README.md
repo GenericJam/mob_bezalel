@@ -38,8 +38,7 @@ style manifests.
 ```elixir
 Mob.Theme.set(MobBezalel.Night)
 
-# Follow the phone's light/dark setting live
-Mob.Theme.AdaptiveWatcher.register_adaptive(MobBezalel.System)
+# Light or dark, following the phone (see MobBezalel.System for live updates)
 Mob.Theme.set(MobBezalel.System)
 ```
 

@@ -21,11 +21,8 @@ defmodule MobBezalel do
 
       Mob.Theme.set(MobBezalel.Night)
 
-  For `MobBezalel.System` to follow the phone live, register it once
-  (e.g. in `on_start/0`):
-
-      Mob.Theme.AdaptiveWatcher.register_adaptive(MobBezalel.System)
-      Mob.Theme.set(MobBezalel.System)
+  `MobBezalel.System` follows the phone's light/dark setting; its moduledoc
+  shows how a screen keeps it live across an OS appearance change.
 
   ## Tokens
 
