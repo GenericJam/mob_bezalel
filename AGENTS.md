@@ -50,8 +50,4 @@ derive from it.
 mix format && mix credo --strict && mix compile --warnings-as-errors && mix test
 ```
 
-`MOB_DEV_PATH=<checkout>` points the test-only mob_dev dep at a local checkout
-(needed until a mob_dev release that validates `assets.fonts` in style
-manifests is on Hex).
-
 Don't bump `@version` without Kevin's go-ahead.

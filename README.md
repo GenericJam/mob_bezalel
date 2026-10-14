@@ -29,9 +29,8 @@ config :mob, :default_style, :mob_bezalel
 ```
 
 The fonts in `priv/mob_style.exs` → `assets.fonts` are copied into the iOS
-app bundle (`UIAppFonts`) and Android `res/font/` at `mix mob.deploy
---native`. Style-shipped fonts need a mob_dev that supports `assets.fonts` in
-style manifests.
+app bundle (`UIAppFonts`) and Android `res/font/` by `mix mob.deploy
+--native` and `mix mob.release`. That needs mob_dev 0.7.25 or later.
 
 ## Use
 

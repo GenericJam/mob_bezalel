@@ -36,22 +36,14 @@ defmodule MobBezalel.MixProject do
   defp deps do
     [
       {:mob, "~> 0.9"},
-      # Test-only: the manifest test runs the real style validator. Style
-      # manifests that ship fonts (`assets.fonts`) need a mob_dev that knows
-      # the key; MOB_DEV_PATH points at a local checkout until it's on Hex.
-      mob_dev_dep(),
+      # Test-only: the manifest test runs the real style validator, which
+      # knows `assets.fonts` from 0.7.25 (MOB-476).
+      {:mob_dev, "~> 0.7.25", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4.2", only: [:dev, :test], runtime: false},
       {:jump_credo_checks, "~> 0.1.0", only: [:dev, :test], runtime: false}
     ]
-  end
-
-  defp mob_dev_dep do
-    case System.get_env("MOB_DEV_PATH") do
-      nil -> {:mob_dev, "~> 0.7", only: [:dev, :test], runtime: false}
-      path -> {:mob_dev, path: path, only: [:dev, :test], runtime: false, override: true}
-    end
   end
 
   defp package do
