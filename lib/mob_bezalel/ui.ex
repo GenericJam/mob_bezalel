@@ -20,10 +20,10 @@ defmodule MobBezalel.UI do
   @type tap :: {pid(), term()}
 
   @doc """
-  The top bar: the screen title in EB Garamond on the bar color. Mob's root
-  already keeps content below the status bar on both platforms, so the bar
-  starts there. `:trailing` places a node at the right; use `bar_button/3`
-  so it takes the bar's colors.
+  The top bar: the Bezalel mark and the screen title in EB Garamond on the
+  bar color. Mob's root already keeps content below the status bar on both
+  platforms, so the bar starts there. `:trailing` places a node at the right;
+  use `bar_button/3` so it takes the bar's colors.
   """
   @spec top_bar(String.t(), Palette.cover(), keyword()) :: map()
   def top_bar(title, cover, opts \\ []) do
@@ -31,10 +31,14 @@ defmodule MobBezalel.UI do
     # A child slot accepts a list; [] renders nothing (a size-0 Spacer would
     # flex on both platforms and halve the title's width).
     trailing = List.wrap(Keyword.get(opts, :trailing))
+    # Gold foil on leather; the accent on paper (the design's markFill).
+    mark_color = if cover == :leather, do: Palette.overlay().mark_gold, else: :secondary
+    mark = MobBezalel.Icons.mark(26, mark_color, cutout: c.bar)
 
     ~MOB"""
     <Column background={c.bar} padding_left={18} padding_right={18} padding_top={6} padding_bottom={14} fill_width={true}>
       <Row gap={10} align={:center} fill_width={true}>
+        {mark}
         <Text text={title} font={:display} text_size={23} text_color={c.on_bar} max_lines={1} weight={1} />
         {trailing}
       </Row>
@@ -82,15 +86,17 @@ defmodule MobBezalel.UI do
   end
 
   @doc """
-  The bottom tab bar. `tabs` is a list of `{label, tap}`; the one at
-  `active_index` is full strength, the others at 55%.
+  The bottom tab bar. `tabs` is a list of `{label, icon, tap}` (`icon` one of
+  `MobBezalel.Icons.names/0`); the one at `active_index` is full strength,
+  the others at 55%.
 
   `inset` is the safe-area bottom (`assigns.safe_area.bottom`). Mob's iOS root
   lets content run under the home indicator, so the bar pads by it there and
   its color fills the indicator area; Android's root already stops above the
   navigation bar, so the inset isn't added again.
   """
-  @spec tab_bar([{String.t(), tap()}], non_neg_integer(), Palette.cover(), number()) :: map()
+  @spec tab_bar([{String.t(), atom(), tap()}], non_neg_integer(), Palette.cover(), number()) ::
+          map()
   def tab_bar(tabs, active_index, cover, inset \\ 0) do
     c = chrome(cover)
     ios = %{padding_bottom: inset + 8}
@@ -98,12 +104,16 @@ defmodule MobBezalel.UI do
     items =
       tabs
       |> Enum.with_index()
-      |> Enum.map(fn {{label, tap}, i} ->
+      |> Enum.map(fn {{label, icon, tap}, i} ->
         color = if i == active_index, do: c.on_bar, else: fade(c.on_bar, 0.55)
+        glyph = MobBezalel.Icons.icon(icon, 24, color)
 
+        # Each part centers itself: an iOS Column always aligns its children
+        # leading, whatever its `align`.
         ~MOB"""
-        <Column weight={1} align={:center} padding_top={10} padding_bottom={10} on_tap={tap}>
-          <Text text={label} font={:ui_semibold} text_size={11} text_color={color} text_align="center" />
+        <Column weight={1} gap={4} padding_top={8} padding_bottom={6} on_tap={tap}>
+          <Box align="center" fill_width={true}>{glyph}</Box>
+          <Text text={label} font={:ui_semibold} text_size={11} text_color={color} text_align="center" max_lines={1} fill_width={true} />
         </Column>
         """
       end)
@@ -127,7 +137,7 @@ defmodule MobBezalel.UI do
     ~MOB"""
     <Box background={:surface} border_color={border} border_width={border_width} corner_radius={radius} padding={padding} fill_width={true}>
       <Column gap={gap} fill_width={true}>
-        {List.wrap(children)}
+        {children |> List.wrap() |> List.flatten()}
       </Column>
     </Box>
     """
@@ -259,7 +269,10 @@ defmodule MobBezalel.UI do
         :aside -> {:surface, :muted, :muted, 14}
       end
 
-    sign = if open?, do: "–", else: "+"
+    chevron =
+      MobBezalel.Icons.icon(if(open?, do: :chevron_up, else: :chevron_down), 14, :muted,
+        stroke: 2.75
+      )
 
     ~MOB"""
     <Box background={bg} border_color={:border} border_width={1} corner_radius={16} fill_width={true}>
@@ -269,7 +282,7 @@ defmodule MobBezalel.UI do
             <Text text={type} font={:ui_semibold} text_size={9.5} letter_spacing={0.95} text_color={tag_color} />
           </Box>
           <Text text={first} text_size={size} text_color={ink} max_lines={1} weight={1} />
-          <Text text={sign} text_size={16} text_color={:muted} />
+          {chevron}
         </Row>
         <Text :if={open?} text={rest} text_size={size} line_height={1.55} text_color={ink} padding_left={14} padding_right={14} padding_bottom={14} />
       </Column>
