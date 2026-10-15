@@ -258,8 +258,9 @@ defmodule MobBezalel.UI do
 
   @doc """
   A collapsible model-output block (THINKING, TOOL CALL, SUMMARY): a type
-  tag, the first line, and when `open?` the rest. `:summary` blocks sit on
-  the page ground with an accent tag; the others on the surface, muted.
+  tag, the first line, and when `open?` the rest (if there is any).
+  `:summary` blocks sit on the page ground with an accent tag; the others on
+  the surface, muted.
   """
   @spec block(String.t(), String.t(), String.t(), boolean(), tap(), :summary | :aside) :: map()
   def block(type, first, rest, open?, tap, kind \\ :aside) do
@@ -284,7 +285,7 @@ defmodule MobBezalel.UI do
           <Text text={first} text_size={size} text_color={ink} max_lines={1} weight={1} />
           {chevron}
         </Row>
-        <Text :if={open?} text={rest} text_size={size} line_height={1.55} text_color={ink} padding_left={14} padding_right={14} padding_bottom={14} />
+        <Text :if={open? and rest != ""} text={rest} text_size={size} line_height={1.55} text_color={ink} padding_left={14} padding_right={14} padding_bottom={14} />
       </Column>
     </Box>
     """
@@ -314,17 +315,37 @@ defmodule MobBezalel.UI do
   The reply composer pinned above the tab bar: a two-line rounded field on
   the surface and a round send button in the call-to-action color. The send
   button dims to 40% while `value` is blank.
+
+  `opts`: `stop:` a tap for a round stop button (an outlined circle with a
+  square) before the send button, shown while a reply streams; sending
+  then still works (the app adds the message to the reply in progress).
   """
-  @spec composer(String.t(), String.t(), tap(), tap()) :: map()
-  def composer(value, placeholder, on_change, on_send) do
+  @spec composer(String.t(), String.t(), tap(), tap(), keyword()) :: map()
+  def composer(value, placeholder, on_change, on_send, opts \\ []) do
     send_bg = if String.trim(value) == "", do: dim(:primary, 0.4), else: :primary
     # Android's Material TextField already pads its text by 16dp, and its
     # `lines` rows sit taller than iOS's; padding there would double up.
     android = %{padding: 0, underline: false}
 
+    stop =
+      case Keyword.get(opts, :stop) do
+        nil ->
+          []
+
+        tap ->
+          [
+            ~MOB"""
+            <Box id="composer-stop" width={44} height={44} corner_radius={22} border_color={:border} border_width={1.5} background={:surface} align="center" fill_width={false} on_tap={tap}>
+              <Box width={14} height={14} corner_radius={3} background={:on_surface} fill_width={false} />
+            </Box>
+            """
+          ]
+      end
+
     ~MOB"""
     <Row gap={8} align={:end} padding_left={12} padding_right={12} padding_top={10} padding_bottom={12} background={:background} fill_width={true}>
       <TextField value={value} placeholder={placeholder} on_change={on_change} lines={2} corner_radius={20} background={:surface} border_color={:border} border_width={1} padding={12} text_size={15} weight={1} android={android} />
+      {stop}
       <Box width={44} height={44} corner_radius={22} background={send_bg} align="center" fill_width={false} on_tap={on_send}>
         <Text text="↑" text_size={20} font={:ui_semibold} text_color={:on_primary} />
       </Box>
