@@ -261,8 +261,12 @@ defmodule MobBezalel.UI do
   tag, the first line, and when `open?` the rest (if there is any).
   `:summary` blocks sit on the page ground with an accent tag; the others on
   the surface, muted.
+
+  `rest` is plain text, or a node to show in its place (a Markdown view
+  styled by `markdown_style/1`), inset like the text.
   """
-  @spec block(String.t(), String.t(), String.t(), boolean(), tap(), :summary | :aside) :: map()
+  @spec block(String.t(), String.t(), String.t() | map(), boolean(), tap(), :summary | :aside) ::
+          map()
   def block(type, first, rest, open?, tap, kind \\ :aside) do
     {bg, ink, tag_color, size} =
       case kind do
@@ -275,6 +279,8 @@ defmodule MobBezalel.UI do
         stroke: 2.75
       )
 
+    body = if open?, do: block_body(rest, size, ink), else: []
+
     ~MOB"""
     <Box background={bg} border_color={:border} border_width={1} corner_radius={16} fill_width={true}>
       <Column fill_width={true}>
@@ -285,10 +291,68 @@ defmodule MobBezalel.UI do
           <Text text={first} text_size={size} text_color={ink} max_lines={1} weight={1} />
           {chevron}
         </Row>
-        <Text :if={open? and rest != ""} text={rest} text_size={size} line_height={1.55} text_color={ink} padding_left={14} padding_right={14} padding_bottom={14} />
+        {body}
       </Column>
     </Box>
     """
+  end
+
+  defp block_body("", _size, _ink), do: []
+
+  defp block_body(rest, size, ink) when is_binary(rest) do
+    ~MOB(<Text text={rest} text_size={size} line_height={1.55} text_color={ink} padding_left={14} padding_right={14} padding_bottom={14} />)
+  end
+
+  defp block_body(%{} = node, _size, _ink) do
+    ~MOB"""
+    <Box padding_left={14} padding_right={14} padding_bottom={14} fill_width={true}>
+      {node}
+    </Box>
+    """
+  end
+
+  @doc """
+  The look of a block's Markdown body (`block/6`'s `kind`), as the props of
+  a native Markdown view (mob_markdown's `MobMarkdown.view/3`): the block's
+  size and ink, headings in EB Garamond, emphasis in Instrument Sans
+  SemiBold, code in the system monospace on a ground of its own, links in
+  the accent. Colors are the active theme's mode, so build it at render
+  time; faces are in platform blocks, which the renderer resolves.
+  """
+  @spec markdown_style(:summary | :aside) :: map()
+  def markdown_style(kind \\ :summary) do
+    r = Palette.roles(MobBezalel.mode() || :dark)
+    fonts = MobBezalel.fonts()
+
+    # Code sits on a hairline-colored ground in a summary (on the page
+    # ground); in an aside (on the surface) the page ground, since muted ink
+    # on the hairline color is too faint at night.
+    {ink, size, code_ground} =
+      case kind do
+        :summary -> {r.ink, 15.5, r.line}
+        :aside -> {r.muted, 14, r.background}
+      end
+
+    faces = %{
+      font_regular: fonts.default,
+      font_bold: fonts.ui_semibold,
+      font_heading: fonts.display
+    }
+
+    %{
+      text_size: size,
+      line_height: 1.55,
+      text_color: ink,
+      heading_color: ink,
+      link_color: r.accent,
+      code_color: ink,
+      code_background: code_ground,
+      quote_color: r.muted,
+      rule_color: r.line,
+      selection_color: r.accent,
+      ios: Map.new(faces, fn {key, font} -> {key, font.ios} end),
+      android: Map.new(faces, fn {key, font} -> {key, font.android} end)
+    }
   end
 
   @doc """

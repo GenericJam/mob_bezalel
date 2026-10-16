@@ -75,6 +75,66 @@ defmodule MobBezalelTest do
     end
   end
 
+  # A block's Markdown takes the active mode's colors (a theme change
+  # re-renders it), and every role in it stays legible on its ground: the
+  # block's (page ground for a summary, surface for an aside) or the code's.
+  test "a block's Markdown follows the active mode and reads at 3:1 in it" do
+    before = Mob.Theme.current()
+    on_exit(fn -> Mob.Theme.set(before) end)
+
+    for mode <- Palette.modes(), {kind, ground} <- [summary: :background, aside: :surface] do
+      :ok = Mob.Theme.set(MobBezalel.theme_module(mode))
+      r = Palette.roles(mode)
+      s = MobBezalel.UI.markdown_style(kind)
+
+      assert s.text_color == if(kind == :summary, do: r.ink, else: r.muted)
+
+      pairs = [
+        text: {s.text_color, Map.fetch!(r, ground)},
+        link: {s.link_color, Map.fetch!(r, ground)},
+        quote: {s.quote_color, Map.fetch!(r, ground)},
+        code: {s.code_color, s.code_background}
+      ]
+
+      for {role, {fg, bg}} <- pairs do
+        ratio = contrast(fg, bg)
+        assert ratio >= 3.0, "#{mode} #{kind} #{role}: #{Float.round(ratio, 2)}:1"
+      end
+    end
+  end
+
+  test "a block's Markdown faces are the theme's, named per platform" do
+    fonts = MobBezalel.fonts()
+    s = MobBezalel.UI.markdown_style(:summary)
+
+    for platform <- [:ios, :android] do
+      faces = Map.fetch!(s, platform)
+      assert faces.font_regular == fonts.default[platform]
+      assert faces.font_bold == fonts.ui_semibold[platform]
+      assert faces.font_heading == fonts.display[platform]
+    end
+  end
+
+  test "an open block shows a node body in place of its text; a closed one hides it" do
+    body = %{type: :text, props: %{text: "BODY"}, children: []}
+    tap = {self(), :tap}
+
+    assert body in nodes(MobBezalel.UI.block("SUMMARY", "First", body, true, tap, :summary))
+    refute body in nodes(MobBezalel.UI.block("SUMMARY", "First", body, false, tap, :summary))
+
+    texts = &for(%{type: :text, props: %{text: t}} <- nodes(&1), do: t)
+    assert "rest" in texts.(MobBezalel.UI.block("THINKING", "First", "rest", true, tap))
+
+    assert texts.(MobBezalel.UI.block("THINKING", "First", "", true, tap)) == [
+             "THINKING",
+             "First"
+           ]
+  end
+
+  defp nodes(%{children: children} = node), do: [node | Enum.flat_map(children, &nodes/1)]
+  defp nodes(list) when is_list(list), do: Enum.flat_map(list, &nodes/1)
+  defp nodes(_other), do: []
+
   defp channel(argb, shift), do: Bitwise.band(Bitwise.bsr(argb, shift), 0xFF)
 
   defp contrast(a, b) do
