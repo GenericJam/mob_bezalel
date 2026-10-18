@@ -88,7 +88,9 @@ defmodule MobBezalel.UI do
   @doc """
   The bottom tab bar. `tabs` is a list of `{label, icon, tap}` (`icon` one of
   `MobBezalel.Icons.names/0`); the one at `active_index` is full strength,
-  the others at 55%.
+  the others at 55%. Four tabs take the design's 18 pt ends and 11 pt
+  labels; more take 4 pt ends and 9.5 pt labels, so five ("Conversations"
+  the longest) fit a 360 pt phone at the default font scale.
 
   `inset` is the safe-area bottom (`assigns.safe_area.bottom`). Mob's iOS root
   lets content run under the home indicator, so the bar pads by it there and
@@ -390,17 +392,19 @@ defmodule MobBezalel.UI do
 
   `leading:` nodes before the field (an attach button), `actions:` nodes
   after it, before stop and send (a mic), both bottom-aligned with send.
-  `above:` nodes shown above the field row (attachment chips, a status
-  line). `send_enabled:` decides the send button's strength instead of the
-  blank check, so a message of attachments alone can be sent.
+  `above:` nodes stacked above the field row, inside the composer's padding
+  (wrap attachment chips in one Row; a status line under it).
+  `send_enabled:` decides the send button's strength instead of the blank
+  check (it's only the look; the tap is always wired), so a message of
+  attachments alone can show as sendable.
   """
   @spec composer(String.t(), String.t(), tap(), tap(), keyword()) :: map()
   def composer(value, placeholder, on_change, on_send, opts \\ []) do
     enabled = Keyword.get_lazy(opts, :send_enabled, fn -> String.trim(value) != "" end)
     send_bg = if enabled, do: :primary, else: dim(:primary, 0.4)
-    leading = Keyword.get(opts, :leading, [])
-    actions = Keyword.get(opts, :actions, [])
-    above = Keyword.get(opts, :above, [])
+    leading = slot(opts, :leading)
+    actions = slot(opts, :actions)
+    above = slot(opts, :above)
     # Android's Material TextField already pads its text by 16dp, and its
     # `lines` rows sit taller than iOS's; padding there would double up.
     android = %{padding: 0, underline: false}
@@ -450,6 +454,9 @@ defmodule MobBezalel.UI do
     """
   end
 
+  # A node-list option: nil, a node or nested lists all come out flat.
+  defp slot(opts, key), do: opts |> Keyword.get(key) |> List.wrap() |> List.flatten()
+
   @doc """
   A 44×44 round icon button: surface fill, hairline border, the icon
   (20 pt) centered. `active: true` takes the call-to-action fill (a mic
@@ -486,29 +493,31 @@ defmodule MobBezalel.UI do
   @doc """
   An attachment in the composer: a small pill with the kind's icon, the
   label (one line; a long one keeps its start and its extension around an
-  ellipsis, so the pill stays short) and a close glyph whose 28 pt target
-  sends `on_remove`. `on_remove` nil leaves the glyph off.
+  ellipsis, cut by estimated width so the pill stays under ~230 pt in any
+  script) and a close glyph whose 28 pt target sends `on_remove`.
+  `on_remove` nil leaves the glyph off.
   """
   @spec attachment_chip(atom(), String.t(), tap() | nil) :: map()
   def attachment_chip(icon_name, label, on_remove) do
     glyph = MobBezalel.Icons.icon(icon_name, 14, :secondary)
-    label = shorten(label, 24)
+    label = shorten(label, 11.5)
 
-    close =
+    # With the close target the chip is 28 tall (a true pill at corner 14).
+    {close, pad_y} =
       case on_remove do
         nil ->
-          []
+          {[], 6}
 
         tap ->
           x = MobBezalel.Icons.icon(:close, 14, :muted)
 
-          [
-            ~MOB(<Box width={28} height={28} align="center" fill_width={false} on_tap={tap}>{x}</Box>)
-          ]
+          {[
+             ~MOB(<Box width={28} height={28} align="center" fill_width={false} on_tap={tap}>{x}</Box>)
+           ], 0}
       end
 
     ~MOB"""
-    <Box background={:surface} border_color={:border} border_width={1} corner_radius={14} padding_left={10} padding_right={6} padding_top={6} padding_bottom={6} fill_width={false}>
+    <Box background={:surface} border_color={:border} border_width={1} corner_radius={14} padding_left={10} padding_right={6} padding_top={pad_y} padding_bottom={pad_y} fill_width={false}>
       <Row gap={6} align={:center}>
         {glyph}
         <Text text={label} font={:ui_medium} text_size={13} text_color={:on_surface} max_lines={1} />
@@ -518,10 +527,43 @@ defmodule MobBezalel.UI do
     """
   end
 
-  defp shorten(text, max) do
-    if String.length(text) <= max,
-      do: text,
-      else: String.slice(text, 0, max - 9) <> "…" <> String.slice(text, -8, 8)
+  # Cuts `text` to about `budget` ems (Instrument Sans: ~0.55 em lowercase,
+  # ~0.72 em capitals, a full em for wide scripts and emoji), keeping the
+  # extension after the ellipsis.
+  defp shorten(text, budget) do
+    if ems(text) <= budget do
+      text
+    else
+      ext = Path.extname(text)
+      ext = if String.length(ext) in 2..8, do: ext, else: ""
+      stem = String.slice(text, 0, String.length(text) - String.length(ext))
+      room = budget - ems(ext) - 1
+
+      {head, _} =
+        stem
+        |> String.graphemes()
+        |> Enum.reduce_while({"", 0}, fn g, {acc, used} ->
+          w = used + ems(g)
+          if w <= room, do: {:cont, {acc <> g, w}}, else: {:halt, {acc, used}}
+        end)
+
+      String.trim_trailing(head) <> "…" <> ext
+    end
+  end
+
+  defp ems(text) do
+    text
+    |> String.graphemes()
+    |> Enum.reduce(0, fn g, sum ->
+      <<cp::utf8, _::binary>> = g
+
+      sum +
+        cond do
+          cp >= 0x1100 -> 1.0
+          g in ["W", "M", "m", "w"] or g != String.downcase(g) -> 0.72
+          true -> 0.55
+        end
+    end)
   end
 
   @doc """
@@ -533,7 +575,9 @@ defmodule MobBezalel.UI do
     glyph = MobBezalel.Icons.icon(icon_name, 22, :secondary)
 
     note =
-      if note, do: [~MOB(<Text text={note} text_size={12} text_color={:muted} />)], else: []
+      if note in [nil, ""],
+        do: [],
+        else: [~MOB(<Text text={note} text_size={12} text_color={:muted} />)]
 
     ~MOB"""
     <Box background={:surface} border_color={:border} border_width={1.5} corner_radius={16} padding_left={14} padding_right={14} padding_top={10} padding_bottom={10} fill_width={true} on_tap={tap}>

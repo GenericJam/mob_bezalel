@@ -167,7 +167,12 @@ defmodule MobBezalelTest do
       chip = MobBezalel.UI.attachment_chip(:file, "a.pdf", :remove)
 
       plain = MobBezalel.UI.composer("", "Ask", tap, :send)
-      assert %{type: :row} = plain
+
+      assert %{type: :row, props: %{padding_left: 12, padding_top: 10, padding_bottom: 12}} =
+               plain
+
+      assert Enum.map(plain.children, & &1.type) == [:text_field, :box]
+      assert MobBezalel.UI.composer("", "Ask", tap, :send, above: nil, leading: [[]]) == plain
 
       tree =
         MobBezalel.UI.composer("", "Ask", tap, :send,
@@ -198,15 +203,26 @@ defmodule MobBezalelTest do
       assert taps.(MobBezalel.UI.attachment_chip(:file, "a.pdf", :remove)) == [:remove]
       assert taps.(MobBezalel.UI.attachment_chip(:file, "a.pdf", nil)) == []
 
-      long = String.duplicate("very long name ", 10) <> "notes.pdf"
+      label = fn text ->
+        [l] =
+          for %{type: :text, props: %{text: t}} <-
+                nodes(MobBezalel.UI.attachment_chip(:file, text, :remove)),
+              do: t
 
-      [label] =
-        for %{type: :text, props: %{text: t}} <-
-              nodes(MobBezalel.UI.attachment_chip(:file, long, nil)),
-            do: t
+        l
+      end
 
-      assert String.length(label) <= 24
-      assert String.ends_with?(label, ".pdf")
+      assert label.("notes.pdf") == "notes.pdf"
+
+      long = label.(String.duplicate("very long name ", 10) <> "notes.pdf")
+      assert String.ends_with?(long, "….pdf")
+      assert String.length(long) <= 21
+
+      # Wide scripts and capitals are cut sooner than lowercase Latin.
+      cjk = label.(String.duplicate("資料", 20) <> ".pdf")
+      assert String.ends_with?(cjk, "….pdf") and String.length(cjk) <= 13
+      caps = label.(String.duplicate("W", 40) <> ".PDF")
+      assert String.ends_with?(caps, "….PDF") and String.length(caps) <= 16
     end
 
     test "menu_row taps as a whole and omits a nil note" do
