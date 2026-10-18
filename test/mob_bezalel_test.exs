@@ -131,6 +131,136 @@ defmodule MobBezalelTest do
            ]
   end
 
+  describe "materials pieces" do
+    setup do
+      before = Mob.Theme.current()
+      :ok = Mob.Theme.set(MobBezalel.Dark)
+      on_exit(fn -> Mob.Theme.set(before) end)
+      %{tap: {self(), :tap}}
+    end
+
+    test "every icon name renders a non-empty Canvas" do
+      for name <- MobBezalel.Icons.names() do
+        assert %{type: :canvas, props: %{width: 20, draw: [_ | _]}} =
+                 MobBezalel.Icons.icon(name, 20, :on_surface)
+      end
+
+      for name <- ~w(materials plus mic speaker image camera video audio file close play stop)a,
+          do: assert(name in MobBezalel.Icons.names())
+    end
+
+    test "send strength follows send_enabled, else the blank check", %{tap: tap} do
+      dimmed = send_bg(MobBezalel.UI.composer("", "Ask", tap, :send))
+      assert dimmed != :primary
+      assert send_bg(MobBezalel.UI.composer("hi", "Ask", tap, :send)) == :primary
+
+      assert send_bg(MobBezalel.UI.composer("", "Ask", tap, :send, send_enabled: true)) ==
+               :primary
+
+      assert send_bg(MobBezalel.UI.composer("hi", "Ask", tap, :send, send_enabled: false)) ==
+               dimmed
+    end
+
+    test "composer places leading, actions and above around the field", %{tap: tap} do
+      plus = MobBezalel.UI.icon_button(:plus, :attach, id: "plus")
+      mic = MobBezalel.UI.icon_button(:mic, :mic)
+      chip = MobBezalel.UI.attachment_chip(:file, "a.pdf", :remove)
+
+      plain = MobBezalel.UI.composer("", "Ask", tap, :send)
+
+      assert %{type: :row, props: %{padding_left: 12, padding_top: 10, padding_bottom: 12}} =
+               plain
+
+      assert Enum.map(plain.children, & &1.type) == [:text_field, :box]
+      assert MobBezalel.UI.composer("", "Ask", tap, :send, above: nil, leading: [[]]) == plain
+
+      tree =
+        MobBezalel.UI.composer("", "Ask", tap, :send,
+          leading: [plus],
+          actions: [mic],
+          above: [chip]
+        )
+
+      assert %{type: :column, children: [^chip, %{type: :row, children: row}]} = tree
+
+      assert [^plus, %{type: :text_field}, ^mic, %{on_tap: :send} | _] =
+               Enum.map(row, &tap_or_node/1)
+    end
+
+    test "icon_button: active takes the call-to-action fill, idle the surface" do
+      idle = MobBezalel.UI.icon_button(:mic, :mic, id: "mic")
+      assert %{background: :surface, border_color: :border, id: "mic", width: 44} = idle.props
+      assert [%{type: :canvas, props: %{width: 20}}] = idle.children
+
+      active = MobBezalel.UI.icon_button(:mic, :mic, active: true, size: 36)
+      assert %{background: :primary, width: 36} = active.props
+      refute Map.has_key?(active.props, :border_color)
+      assert hd(active.children).props.draw |> hd() |> Map.get(:color) == :on_primary
+    end
+
+    test "attachment_chip: close tap only with on_remove; long names stay short" do
+      taps = &for(%{props: %{on_tap: t}} <- nodes(&1), do: t)
+      assert taps.(MobBezalel.UI.attachment_chip(:file, "a.pdf", :remove)) == [:remove]
+      assert taps.(MobBezalel.UI.attachment_chip(:file, "a.pdf", nil)) == []
+
+      label = fn text ->
+        [l] =
+          for %{type: :text, props: %{text: t}} <-
+                nodes(MobBezalel.UI.attachment_chip(:file, text, :remove)),
+              do: t
+
+        l
+      end
+
+      assert label.("notes.pdf") == "notes.pdf"
+
+      long = label.(String.duplicate("very long name ", 10) <> "notes.pdf")
+      assert String.ends_with?(long, "….pdf")
+      assert String.length(long) <= 21
+
+      # Wide scripts and capitals are cut sooner than lowercase Latin.
+      cjk = label.(String.duplicate("資料", 20) <> ".pdf")
+      assert String.ends_with?(cjk, "….pdf") and String.length(cjk) <= 13
+      caps = label.(String.duplicate("W", 40) <> ".PDF")
+      assert String.ends_with?(caps, "….PDF") and String.length(caps) <= 16
+      tamil = label.(String.duplicate("தமிழ்", 20))
+      assert String.ends_with?(tamil, "…") and String.length(tamil) <= 11
+      bad = label.(String.duplicate(<<0xED, 0xA0, 0xBD>>, 30))
+      assert String.valid?(bad) and String.ends_with?(bad, "…") and String.length(bad) <= 11
+    end
+
+    test "menu_row taps as a whole and omits a nil note" do
+      texts = &for(%{type: :text, props: %{text: t}} <- nodes(&1), do: t)
+      row = MobBezalel.UI.menu_row(:camera, "Take photo", "Camera", :photo)
+      assert row.props.on_tap == :photo
+      assert texts.(row) == ["Take photo", "Camera"]
+      assert texts.(MobBezalel.UI.menu_row(:camera, "Take photo", nil, :photo)) == ["Take photo"]
+    end
+
+    test "tab_bar keeps four tabs as designed and narrows for five" do
+      tabs = for l <- ~w(Study Conversations Workshop Settings), do: {l, :study, :t}
+      four = MobBezalel.UI.tab_bar(tabs, 0, :leather)
+      assert four.props.padding_left == 18
+      assert Enum.all?(labels(four), &(&1.text_size == 11 and &1.max_lines == 1))
+
+      five =
+        MobBezalel.UI.tab_bar(List.insert_at(tabs, 2, {"Materials", :materials, :t}), 0, :leather)
+
+      assert five.props.padding_left < 18
+      assert Enum.all?(labels(five), &(&1.text_size < 11 and &1.max_lines == 1))
+    end
+  end
+
+  defp send_bg(tree) do
+    [bg] = for %{props: %{on_tap: :send, background: bg}} <- nodes(tree), do: bg
+    bg
+  end
+
+  defp tap_or_node(%{type: :box, props: %{on_tap: :send}}), do: %{on_tap: :send}
+  defp tap_or_node(node), do: node
+
+  defp labels(tree), do: for(%{type: :text, props: p} <- nodes(tree), do: p)
+
   defp nodes(%{children: children} = node), do: [node | Enum.flat_map(children, &nodes/1)]
   defp nodes(list) when is_list(list), do: Enum.flat_map(list, &nodes/1)
   defp nodes(_other), do: []

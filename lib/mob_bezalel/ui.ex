@@ -88,7 +88,9 @@ defmodule MobBezalel.UI do
   @doc """
   The bottom tab bar. `tabs` is a list of `{label, icon, tap}` (`icon` one of
   `MobBezalel.Icons.names/0`); the one at `active_index` is full strength,
-  the others at 55%.
+  the others at 55%. Four tabs take the design's 18 pt ends and 11 pt
+  labels; more take 4 pt ends and 9.5 pt labels, so five ("Conversations"
+  the longest) fit a 360 pt phone at the default font scale.
 
   `inset` is the safe-area bottom (`assigns.safe_area.bottom`). Mob's iOS root
   lets content run under the home indicator, so the bar pads by it there and
@@ -100,6 +102,10 @@ defmodule MobBezalel.UI do
   def tab_bar(tabs, active_index, cover, inset \\ 0) do
     c = chrome(cover)
     ios = %{padding_bottom: inset + 8}
+    # Five tabs fit a 360 pt phone only with narrower ends and a smaller
+    # label ("Conversations" is ~65 pt at 9.5); four keep the design's.
+    {side, label_size} =
+      if Enum.count_until(tabs, 5) > 4, do: {4, 9.5}, else: {18, 11}
 
     items =
       tabs
@@ -113,13 +119,13 @@ defmodule MobBezalel.UI do
         ~MOB"""
         <Column weight={1} gap={4} padding_top={8} padding_bottom={6} on_tap={tap}>
           <Box align="center" fill_width={true}>{glyph}</Box>
-          <Text text={label} font={:ui_semibold} text_size={11} text_color={color} text_align="center" max_lines={1} fill_width={true} />
+          <Text text={label} font={:ui_semibold} text_size={label_size} text_color={color} text_align="center" max_lines={1} fill_width={true} />
         </Column>
         """
       end)
 
     ~MOB"""
-    <Row background={c.bar} padding_left={18} padding_right={18} padding_bottom={8} ios={ios} fill_width={true}>
+    <Row background={c.bar} padding_left={side} padding_right={side} padding_bottom={8} ios={ios} fill_width={true}>
       {items}
     </Row>
     """
@@ -383,10 +389,23 @@ defmodule MobBezalel.UI do
   `opts`: `stop:` a tap for a round stop button (an outlined circle with a
   square) before the send button, shown while a reply streams; sending
   then still works (the app adds the message to the reply in progress).
+
+  `leading:` nodes before the field (an attach button), `actions:` nodes
+  after it, before stop and send (a mic), both bottom-aligned with send.
+  `above:` nodes stacked above the field row, inside the composer's padding
+  (attachment chips in a `<Scroll axis="horizontal">` Row, so several don't
+  squeeze one another; a status line under it).
+  `send_enabled:` decides the send button's strength instead of the blank
+  check (it's only the look; the tap is always wired), so a message of
+  attachments alone can show as sendable.
   """
   @spec composer(String.t(), String.t(), tap(), tap(), keyword()) :: map()
   def composer(value, placeholder, on_change, on_send, opts \\ []) do
-    send_bg = if String.trim(value) == "", do: dim(:primary, 0.4), else: :primary
+    enabled = Keyword.get_lazy(opts, :send_enabled, fn -> String.trim(value) != "" end)
+    send_bg = if enabled, do: :primary, else: dim(:primary, 0.4)
+    leading = slot(opts, :leading)
+    actions = slot(opts, :actions)
+    above = slot(opts, :above)
     # Android's Material TextField already pads its text by 16dp, and its
     # `lines` rows sit taller than iOS's; padding there would double up.
     android = %{padding: 0, underline: false}
@@ -406,14 +425,166 @@ defmodule MobBezalel.UI do
           ]
       end
 
-    ~MOB"""
+    row = ~MOB"""
     <Row gap={8} align={:end} padding_left={12} padding_right={12} padding_top={10} padding_bottom={12} background={:background} fill_width={true}>
+      {leading}
       <TextField value={value} placeholder={placeholder} on_change={on_change} lines={2} corner_radius={20} background={:surface} border_color={:border} border_width={1} padding={12} text_size={15} weight={1} android={android} />
+      {actions}
       {stop}
       <Box width={44} height={44} corner_radius={22} background={send_bg} align="center" fill_width={false} on_tap={on_send}>
         <Text text="↑" text_size={20} font={:ui_semibold} text_color={:on_primary} />
       </Box>
     </Row>
+    """
+
+    composer_above(row, above)
+  end
+
+  defp composer_above(row, []), do: row
+
+  # The chips sit inside the composer's padding, above the field row.
+  defp composer_above(row, above) do
+    unpadded = %{padding_top: 0, padding_left: 0, padding_right: 0, padding_bottom: 0}
+    row = %{row | props: Map.merge(row.props, unpadded)}
+
+    ~MOB"""
+    <Column gap={8} padding_left={12} padding_right={12} padding_top={10} padding_bottom={12} background={:background} fill_width={true}>
+      {above}
+      {row}
+    </Column>
+    """
+  end
+
+  # A node-list option: nil, a node or nested lists all come out flat.
+  defp slot(opts, key), do: opts |> Keyword.get(key) |> List.wrap() |> List.flatten()
+
+  @doc """
+  A 44×44 round icon button: surface fill, hairline border, the icon
+  (20 pt) centered. `active: true` takes the call-to-action fill (a mic
+  that's listening). Options: `:id`, `:size` (default 44).
+  """
+  @spec icon_button(atom(), tap(), keyword()) :: map()
+  def icon_button(icon_name, tap, opts \\ []) do
+    size = Keyword.get(opts, :size, 44)
+
+    {bg, fg, border} =
+      if Keyword.get(opts, :active, false),
+        do: {:primary, :on_primary, nil},
+        else: {:surface, :on_surface, :border}
+
+    %{
+      type: :box,
+      props:
+        reject_nil(%{
+          id: Keyword.get(opts, :id),
+          width: size,
+          height: size,
+          corner_radius: size / 2,
+          background: bg,
+          border_color: border,
+          border_width: border && 1.5,
+          align: "center",
+          fill_width: false,
+          on_tap: tap
+        }),
+      children: [MobBezalel.Icons.icon(icon_name, 20, fg)]
+    }
+  end
+
+  @doc """
+  An attachment in the composer: a small pill with the kind's icon, the
+  label (one line; a long one keeps its start and its extension around an
+  ellipsis, cut by estimated width so the pill stays under ~230 pt) and a
+  close glyph whose 28 pt target sends `on_remove`.
+  `on_remove` nil leaves the glyph off.
+  """
+  @spec attachment_chip(atom(), String.t(), tap() | nil) :: map()
+  def attachment_chip(icon_name, label, on_remove) do
+    glyph = MobBezalel.Icons.icon(icon_name, 14, :secondary)
+    label = label |> String.replace_invalid() |> shorten(11.5)
+
+    # With the close target the chip is 28 tall (a true pill at corner 14).
+    {close, pad_y} =
+      case on_remove do
+        nil ->
+          {[], 6}
+
+        tap ->
+          x = MobBezalel.Icons.icon(:close, 14, :muted)
+
+          {[
+             ~MOB(<Box width={28} height={28} align="center" fill_width={false} on_tap={tap}>{x}</Box>)
+           ], 0}
+      end
+
+    ~MOB"""
+    <Box background={:surface} border_color={:border} border_width={1} corner_radius={14} padding_left={10} padding_right={6} padding_top={pad_y} padding_bottom={pad_y} fill_width={false}>
+      <Row gap={6} align={:center}>
+        {glyph}
+        <Text text={label} font={:ui_medium} text_size={13} text_color={:on_surface} max_lines={1} />
+        {close}
+      </Row>
+    </Box>
+    """
+  end
+
+  # Cuts `text` to about `budget` ems (Instrument Sans: ~0.55 em lowercase,
+  # ~0.72 em capitals, a full em for Indic and wider scripts, emoji and
+  # bytes that aren't UTF-8), keeping the extension after the ellipsis.
+  defp shorten(text, budget) do
+    if ems(text) <= budget do
+      text
+    else
+      ext = Path.extname(text)
+      ext = if String.length(ext) in 2..8, do: ext, else: ""
+      stem = String.slice(text, 0, String.length(text) - String.length(ext))
+      room = budget - ems(ext) - 1
+
+      {head, _} =
+        stem
+        |> String.graphemes()
+        |> Enum.reduce_while({"", 0}, fn g, {acc, used} ->
+          w = used + ems(g)
+          if w <= room, do: {:cont, {acc <> g, w}}, else: {:halt, {acc, used}}
+        end)
+
+      String.trim_trailing(head) <> "…" <> ext
+    end
+  end
+
+  defp ems(text), do: text |> String.graphemes() |> Enum.map(&grapheme_ems/1) |> Enum.sum()
+
+  defp grapheme_ems(<<cp::utf8, _::binary>>) when cp >= 0x0900, do: 1.0
+
+  defp grapheme_ems(<<_::utf8, _::binary>> = g) do
+    if g in ["W", "M", "m", "w"] or g != String.downcase(g), do: 0.72, else: 0.55
+  end
+
+  defp grapheme_ems(_invalid), do: 1.0
+
+  @doc """
+  A full-width menu row (the attach menu): an icon in the accent, a title
+  and an optional note under it; the whole row taps `tap`.
+  """
+  @spec menu_row(atom(), String.t(), String.t() | nil, tap()) :: map()
+  def menu_row(icon_name, title, note, tap) do
+    glyph = MobBezalel.Icons.icon(icon_name, 22, :secondary)
+
+    note =
+      if note in [nil, ""],
+        do: [],
+        else: [~MOB(<Text text={note} text_size={12} text_color={:muted} />)]
+
+    ~MOB"""
+    <Box background={:surface} border_color={:border} border_width={1.5} corner_radius={16} padding_left={14} padding_right={14} padding_top={10} padding_bottom={10} fill_width={true} on_tap={tap}>
+      <Row gap={12} align={:center} fill_width={true}>
+        <Box width={28} align="center" fill_width={false}>{glyph}</Box>
+        <Column gap={2} weight={1}>
+          <Text text={title} font={:ui_medium} text_size={15} text_color={:on_surface} />
+          {note}
+        </Column>
+      </Row>
+    </Box>
     """
   end
 

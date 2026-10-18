@@ -22,7 +22,19 @@ defmodule MobBezalel.Icons do
     :more,
     :chevron_down,
     :chevron_up,
-    :hammer
+    :hammer,
+    :materials,
+    :plus,
+    :mic,
+    :speaker,
+    :image,
+    :camera,
+    :video,
+    :audio,
+    :file,
+    :close,
+    :play,
+    :stop
   ]
 
   @doc "The icon names `icon/3` knows."
@@ -171,6 +183,107 @@ defmodule MobBezalel.Icons do
       path(head, Keyword.new(st)),
       line(17.64, 15, 22, 10.64, Keyword.new(st))
     ]
+  end
+
+  defp ops(:materials, st) do
+    # gem: the outline, the girdle and the two inner facets.
+    [
+      path([{6, 3}, {18, 3}, {22, 9}, {12, 22}, {2, 9}], kw(st, closed: true)),
+      path([{11, 3}, {8, 9}, {12, 22}, {16, 9}, {13, 3}], kw(st)),
+      line(2, 9, 22, 9, kw(st))
+    ]
+  end
+
+  defp ops(:plus, st), do: [line(5, 12, 19, 12, kw(st)), line(12, 5, 12, 19, kw(st))]
+
+  defp ops(:mic, st) do
+    # mic: a capsule, the cradle arc and the stand.
+    capsule = arc(12, 5, 3, 180, 360) ++ arc(12, 12, 3, 0, 180)
+
+    [
+      path(capsule, kw(st, closed: true)),
+      path([{19, 10}] ++ arc(12, 12, 7, 0, 180) ++ [{5, 10}], kw(st)),
+      line(12, 19, 12, 22, kw(st))
+    ]
+  end
+
+  defp ops(:speaker, st) do
+    # volume-2: the speaker body and two sound waves.
+    body = [{11, 4.7}, {6.4, 8}, {3, 8}, {2, 9}, {2, 15}, {3, 16}, {6.4, 16}, {11, 19.3}]
+
+    [
+      path(body, kw(st, closed: true)),
+      path(arc(12, 12, 5, -36.87, 36.87), kw(st)),
+      path(arc(13, 12, 9, -45, 45, 10), kw(st))
+    ]
+  end
+
+  defp ops(:image, st) do
+    # image: a frame, the sun and the hill.
+    hill = [{21, 15}, {17.91, 11.91}] ++ arc(16.5, 13.33, 2, -45, -135) ++ [{6, 21}]
+
+    [
+      path(rounded_rect(3, 3, 21, 21, 2), kw(st, closed: true)),
+      circle(9, 9, 2, color: st.color, width: st.width),
+      path(hill, kw(st))
+    ]
+  end
+
+  defp ops(:camera, st) do
+    # camera: the body with its viewfinder hump, and the lens.
+    body =
+      [{9.5, 4}, {14.5, 4}, {17, 7}, {20, 7}] ++
+        arc(20, 9, 2, -90, 0) ++
+        arc(20, 18, 2, 0, 90) ++ arc(4, 18, 2, 90, 180) ++ arc(4, 9, 2, 180, 270) ++ [{7, 7}]
+
+    [path(body, kw(st, closed: true)), circle(12, 13, 3, color: st.color, width: st.width)]
+  end
+
+  defp ops(:video, st) do
+    # video: the camera body and the lens hood.
+    [
+      path(rounded_rect(2, 6, 16, 18, 2), kw(st, closed: true)),
+      path([{16, 13}, {22, 17}, {22, 7}, {16, 10.5}], kw(st))
+    ]
+  end
+
+  defp ops(:audio, st) do
+    # audio-lines: six level bars.
+    [{2, 10, 13}, {6, 6, 17}, {10, 3, 21}, {14, 8, 15}, {18, 5, 18}, {22, 10, 13}]
+    |> Enum.map(fn {x, y1, y2} -> line(x, y1, x, y2, kw(st)) end)
+  end
+
+  defp ops(:file, st) do
+    # file-text: the page with a folded corner and three lines of text.
+    page =
+      [{15, 2}, {6, 2}] ++
+        arc(6, 4, 2, 270, 180) ++
+        arc(6, 20, 2, 180, 90) ++ arc(18, 20, 2, 90, 0) ++ [{20, 7}]
+
+    fold = [{14, 2}, {14, 6}] ++ arc(16, 6, 2, 180, 90) ++ [{20, 8}]
+
+    [
+      path(page, kw(st, closed: true)),
+      path(fold, kw(st)),
+      line(10, 9, 8, 9, kw(st)),
+      line(16, 13, 8, 13, kw(st)),
+      line(16, 17, 8, 17, kw(st))
+    ]
+  end
+
+  defp ops(:close, st), do: [line(18, 6, 6, 18, kw(st)), line(6, 6, 18, 18, kw(st))]
+
+  defp ops(:play, st), do: [path([{6, 3}, {20, 12}, {6, 21}], kw(st, closed: true))]
+
+  defp ops(:stop, st), do: [path(rounded_rect(3, 3, 21, 21, 2), kw(st, closed: true))]
+
+  defp kw(st, extra \\ []), do: Keyword.merge(Keyword.new(st), extra)
+
+  # A rounded rectangle's outline from (x1, y1) to (x2, y2), corner radius r.
+  defp rounded_rect(x1, y1, x2, y2, r) do
+    arc(x1 + r, y1 + r, r, 180, 270) ++
+      arc(x2 - r, y1 + r, r, 270, 360) ++
+      arc(x2 - r, y2 - r, r, 0, 90) ++ arc(x1 + r, y2 - r, r, 90, 180)
   end
 
   # Points along a circular arc (degrees, 0 = +x, clockwise on screen).
