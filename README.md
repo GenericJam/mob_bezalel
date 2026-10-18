@@ -53,6 +53,32 @@ MobBezalel.Palette.roles(:dark).user_bubble      # 0xFF4A1F1A
 MobBezalel.Palette.brand().tekhelet              # 0xFF1C2A44
 ```
 
+## UI composites and icons
+
+`MobBezalel.UI` builds the design's recurring pieces as ordinary Mob render
+trees: `top_bar/3`, `bar_button/3`, `tab_bar/4` (four or five tabs; five
+narrow its ends and labels to fit a 360 pt phone), `card/2`, `kicker/2`,
+`pill_button/4`, `chip/2`, `segmented/2`, `block/6`, `markdown_style/1`,
+`user_bubble/1`, `meter/2`, and:
+
+- `composer/5`: the reply field and send button. Options: `stop:` (a stop
+  button while a reply streams), `leading:` and `actions:` (nodes before and
+  after the field, e.g. an attach button and a mic), `above:` (nodes above
+  the field row, e.g. attachment chips), `send_enabled:` (overrides the
+  blank-text check that dims send).
+- `icon_button/3`: a round 44 pt icon button; `active: true` takes the
+  call-to-action fill.
+- `attachment_chip/3`: a pill with a kind icon, a short label and a close
+  glyph that sends `on_remove` (none when it's `nil`).
+- `menu_row/4`: a full-width row with an icon, a title and an optional note.
+
+`MobBezalel.Icons.icon/3` draws the design's Lucide glyphs as `<Canvas>`
+nodes; `Icons.names/0` lists them: `:study`, `:conversations`, `:workshop`,
+`:settings`, `:send`, `:more`, `:chevron_down`, `:chevron_up`, `:hammer`,
+`:materials` (gem), `:plus`, `:mic`, `:speaker` (volume-2), `:image`,
+`:camera`, `:video`, `:audio` (audio-lines), `:file` (file-text), `:close`
+(x), `:play`, `:stop` (square).
+
 ## Source
 
 Tokens are taken from the Claude Design project "Bezalel Brand Foundation"
