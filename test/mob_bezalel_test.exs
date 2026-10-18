@@ -223,8 +223,10 @@ defmodule MobBezalelTest do
       assert String.ends_with?(cjk, "….pdf") and String.length(cjk) <= 13
       caps = label.(String.duplicate("W", 40) <> ".PDF")
       assert String.ends_with?(caps, "….PDF") and String.length(caps) <= 16
-      assert String.ends_with?(label.(String.duplicate("தமிழ்", 20)), "…")
-      assert String.ends_with?(label.(String.duplicate(<<0xED, 0xA0, 0xBD>>, 30)), "…")
+      tamil = label.(String.duplicate("தமிழ்", 20))
+      assert String.ends_with?(tamil, "…") and String.length(tamil) <= 11
+      bad = label.(String.duplicate(<<0xED, 0xA0, 0xBD>>, 30))
+      assert String.valid?(bad) and String.ends_with?(bad, "…") and String.length(bad) <= 11
     end
 
     test "menu_row taps as a whole and omits a nil note" do

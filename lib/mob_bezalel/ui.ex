@@ -501,7 +501,7 @@ defmodule MobBezalel.UI do
   @spec attachment_chip(atom(), String.t(), tap() | nil) :: map()
   def attachment_chip(icon_name, label, on_remove) do
     glyph = MobBezalel.Icons.icon(icon_name, 14, :secondary)
-    label = shorten(label, 11.5)
+    label = label |> String.replace_invalid() |> shorten(11.5)
 
     # With the close target the chip is 28 tall (a true pill at corner 14).
     {close, pad_y} =
