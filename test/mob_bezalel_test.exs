@@ -77,17 +77,19 @@ defmodule MobBezalelTest do
 
   # A block's Markdown takes the active mode's colors (a theme change
   # re-renders it), and every role in it stays legible on its ground: the
-  # block's (page ground for a summary, surface for an aside) or the code's.
+  # block's (page ground for a summary, surface for an aside or a consult)
+  # or the code's.
   test "a block's Markdown follows the active mode and reads at 3:1 in it" do
     before = Mob.Theme.current()
     on_exit(fn -> Mob.Theme.set(before) end)
 
-    for mode <- Palette.modes(), {kind, ground} <- [summary: :background, aside: :surface] do
+    for mode <- Palette.modes(),
+        {kind, ground} <- [summary: :background, aside: :surface, consult: :surface] do
       :ok = Mob.Theme.set(MobBezalel.theme_module(mode))
       r = Palette.roles(mode)
       s = MobBezalel.UI.markdown_style(kind)
 
-      assert s.text_color == if(kind == :summary, do: r.ink, else: r.muted)
+      assert s.text_color == if(kind == :aside, do: r.muted, else: r.ink)
 
       pairs = [
         text: {s.text_color, Map.fetch!(r, ground)},
@@ -129,6 +131,22 @@ defmodule MobBezalelTest do
              "THINKING",
              "First"
            ]
+  end
+
+  test "a consult block: title over the first line, cut to two lines until opened" do
+    body = %{type: :text, props: %{text: "BODY"}, children: []}
+    tap = {self(), :tap}
+    closed = MobBezalel.UI.consult_block("Pushback · Gemini 3 Pro", "1. major", body, false, tap)
+    open = MobBezalel.UI.consult_block("Pushback · Gemini 3 Pro", "1. major", body, true, tap)
+
+    texts = &for(%{type: :text, props: %{text: t} = p} <- nodes(&1), do: {t, p[:max_lines]})
+    assert [{"Pushback · Gemini 3 Pro", 1}, {"1. major", 2}] = texts.(closed)
+    assert [{"Pushback · Gemini 3 Pro", 1}, {"1. major", nil}, {"BODY", nil}] = texts.(open)
+
+    # Set apart from the answering model's blocks by the accent hairline,
+    # and the head toggles it.
+    assert %{border_color: :secondary} = closed.props
+    assert tap in for(%{props: %{on_tap: t}} <- nodes(closed), do: t)
   end
 
   describe "materials pieces" do
