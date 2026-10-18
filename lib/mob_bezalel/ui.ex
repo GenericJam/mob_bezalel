@@ -393,7 +393,8 @@ defmodule MobBezalel.UI do
   `leading:` nodes before the field (an attach button), `actions:` nodes
   after it, before stop and send (a mic), both bottom-aligned with send.
   `above:` nodes stacked above the field row, inside the composer's padding
-  (wrap attachment chips in one Row; a status line under it).
+  (attachment chips in a `<Scroll axis="horizontal">` Row, so several don't
+  squeeze one another; a status line under it).
   `send_enabled:` decides the send button's strength instead of the blank
   check (it's only the look; the tap is always wired), so a message of
   attachments alone can show as sendable.
@@ -493,8 +494,8 @@ defmodule MobBezalel.UI do
   @doc """
   An attachment in the composer: a small pill with the kind's icon, the
   label (one line; a long one keeps its start and its extension around an
-  ellipsis, cut by estimated width so the pill stays under ~230 pt in any
-  script) and a close glyph whose 28 pt target sends `on_remove`.
+  ellipsis, cut by estimated width so the pill stays under ~230 pt) and a
+  close glyph whose 28 pt target sends `on_remove`.
   `on_remove` nil leaves the glyph off.
   """
   @spec attachment_chip(atom(), String.t(), tap() | nil) :: map()
@@ -528,8 +529,8 @@ defmodule MobBezalel.UI do
   end
 
   # Cuts `text` to about `budget` ems (Instrument Sans: ~0.55 em lowercase,
-  # ~0.72 em capitals, a full em for wide scripts and emoji), keeping the
-  # extension after the ellipsis.
+  # ~0.72 em capitals, a full em for Indic and wider scripts, emoji and
+  # bytes that aren't UTF-8), keeping the extension after the ellipsis.
   defp shorten(text, budget) do
     if ems(text) <= budget do
       text
@@ -551,20 +552,15 @@ defmodule MobBezalel.UI do
     end
   end
 
-  defp ems(text) do
-    text
-    |> String.graphemes()
-    |> Enum.reduce(0, fn g, sum ->
-      <<cp::utf8, _::binary>> = g
+  defp ems(text), do: text |> String.graphemes() |> Enum.map(&grapheme_ems/1) |> Enum.sum()
 
-      sum +
-        cond do
-          cp >= 0x1100 -> 1.0
-          g in ["W", "M", "m", "w"] or g != String.downcase(g) -> 0.72
-          true -> 0.55
-        end
-    end)
+  defp grapheme_ems(<<cp::utf8, _::binary>>) when cp >= 0x0900, do: 1.0
+
+  defp grapheme_ems(<<_::utf8, _::binary>> = g) do
+    if g in ["W", "M", "m", "w"] or g != String.downcase(g), do: 0.72, else: 0.55
   end
+
+  defp grapheme_ems(_invalid), do: 1.0
 
   @doc """
   A full-width menu row (the attach menu): an icon in the accent, a title
