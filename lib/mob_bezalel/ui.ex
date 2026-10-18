@@ -62,6 +62,32 @@ defmodule MobBezalel.UI do
   end
 
   @doc """
+  `bar_button/3` with an icon (`MobBezalel.Icons`) in place of the label:
+  a menu's ⋯ in the top bar. `opts`: `:id`.
+  """
+  @spec bar_icon_button(atom(), tap(), Palette.cover(), keyword()) :: map()
+  def bar_icon_button(icon, tap, cover, opts \\ []) do
+    c = chrome(cover)
+
+    %{
+      type: :box,
+      props:
+        reject_nil(%{
+          id: Keyword.get(opts, :id),
+          border_color: c.bar_line,
+          border_width: 1,
+          corner_radius: 16,
+          width: 40,
+          height: 32,
+          align: "center",
+          fill_width: false,
+          on_tap: tap
+        }),
+      children: [MobBezalel.Icons.icon(icon, 16, c.on_bar)]
+    }
+  end
+
+  @doc """
   The bottom-sheet look from the design, as `<Sheet>` props: page-ground
   background, 28 pt top corners, a warm scrim, and a 40×5 handle in the line
   color. Pass them through with the sheet's other props:

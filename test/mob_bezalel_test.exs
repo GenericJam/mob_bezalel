@@ -216,6 +216,18 @@ defmodule MobBezalelTest do
       assert hd(active.children).props.draw |> hd() |> Map.get(:color) == :on_primary
     end
 
+    test "bar_icon_button: the bar's ink and outline on either cover; id only when given" do
+      for cover <- Palette.covers() do
+        c = Palette.chrome(:dark, cover)
+        b = MobBezalel.UI.bar_icon_button(:more, :menu, cover, id: "menu")
+        assert %{border_color: border, id: "menu", on_tap: :menu} = b.props
+        assert border == c.bar_line
+        assert hd(b.children).props.draw |> hd() |> Map.get(:color) == c.on_bar
+      end
+
+      refute Map.has_key?(MobBezalel.UI.bar_icon_button(:more, :menu, :paper).props, :id)
+    end
+
     test "attachment_chip: close tap only with on_remove; long names stay short" do
       taps = &for(%{props: %{on_tap: t}} <- nodes(&1), do: t)
       assert taps.(MobBezalel.UI.attachment_chip(:file, "a.pdf", :remove)) == [:remove]
