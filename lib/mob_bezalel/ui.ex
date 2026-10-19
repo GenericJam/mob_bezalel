@@ -39,7 +39,7 @@ defmodule MobBezalel.UI do
     <Column background={c.bar} padding_left={18} padding_right={18} padding_top={6} padding_bottom={14} fill_width={true}>
       <Row gap={10} align={:center} fill_width={true}>
         {mark}
-        <Text text={title} font={:display} text_size={23} text_color={c.on_bar} max_lines={1} weight={1} />
+        <Text text={title} font={:display} text_size={MobBezalel.capped_size(23, 1.15)} text_color={c.on_bar} max_lines={1} weight={1} />
         {trailing}
       </Row>
     </Column>
@@ -56,7 +56,7 @@ defmodule MobBezalel.UI do
 
     ~MOB"""
     <Box border_color={c.bar_line} border_width={1} corner_radius={16} height={32} padding_left={12} padding_right={12} align="center" fill_width={false} on_tap={tap}>
-      <Text text={label} font={:ui_medium} text_size={12} text_color={c.on_bar} max_lines={1} />
+      <Text text={label} font={:ui_medium} text_size={MobBezalel.capped_size(12, 1.15)} text_color={c.on_bar} max_lines={1} />
     </Box>
     """
   end
@@ -132,6 +132,11 @@ defmodule MobBezalel.UI do
     # label ("Conversations" is ~65 pt at 9.5); four keep the design's.
     {side, label_size} =
       if Enum.count_until(tabs, 5) > 4, do: {4, 9.5}, else: {18, 11}
+
+    # The labels already fill their slots at the default size: a larger text
+    # size would only cut them, so they follow a smaller one down and no
+    # further up (the icons carry the meaning).
+    label_size = MobBezalel.capped_size(label_size, 1.0)
 
     items =
       tabs
@@ -255,6 +260,8 @@ defmodule MobBezalel.UI do
   """
   @spec segmented([{String.t(), tap()}], non_neg_integer()) :: map()
   def segmented(options, selected_index) do
+    size = MobBezalel.capped_size(13, 1.15)
+
     segments =
       options
       |> Enum.with_index()
@@ -274,7 +281,7 @@ defmodule MobBezalel.UI do
               on_tap: tap
             }),
           children: [
-            ~MOB(<Text text={label} font={:ui_medium} text_size={13} text_color={fg} max_lines={1} />)
+            ~MOB(<Text text={label} font={:ui_medium} text_size={size} text_color={fg} max_lines={1} />)
           ]
         }
       end)
@@ -408,6 +415,7 @@ defmodule MobBezalel.UI do
     }
 
     %{
+      # A top-level prop of the native view: the renderer applies text_scale.
       text_size: size,
       line_height: 1.55,
       text_color: ink,
@@ -563,7 +571,9 @@ defmodule MobBezalel.UI do
   @spec attachment_chip(atom(), String.t(), tap() | nil) :: map()
   def attachment_chip(icon_name, label, on_remove) do
     glyph = MobBezalel.Icons.icon(icon_name, 14, :secondary)
-    label = label |> String.replace_invalid() |> shorten(11.5)
+    # The budget is in ems at the design's size: a larger text size leaves
+    # fewer of them under the same ~230 pt.
+    label = label |> String.replace_invalid() |> shorten(11.5 / max(MobBezalel.text_scale(), 1.0))
 
     # With the close target the chip is 28 tall (a true pill at corner 14).
     {close, pad_y} =

@@ -281,6 +281,60 @@ defmodule MobBezalelTest do
     end
   end
 
+  describe "text size" do
+    setup do
+      on_exit(fn -> Mob.Theme.set(MobBezalel.Dark) end)
+    end
+
+    test "chrome grows only up to its cap, and follows a smaller size down" do
+      tabs = for l <- ~w(Study Conversations Materials Workshop Settings), do: {l, :study, :t}
+
+      Mob.Theme.set({MobBezalel.Dark, text_scale: 1.5})
+
+      assert_in_delta on_screen(title_size(MobBezalel.UI.top_bar("Study", :leather))),
+                      23 * 1.15,
+                      1.0e-9
+
+      assert Enum.all?(
+               labels(MobBezalel.UI.tab_bar(tabs, 0, :leather)),
+               &(on_screen(&1.text_size) == 9.5)
+             )
+
+      [seg | _] = labels(MobBezalel.UI.segmented([{"Light", :l}, {"Dark", :d}], 0))
+      assert_in_delta on_screen(seg.text_size), 13 * 1.15, 1.0e-9
+
+      Mob.Theme.set({MobBezalel.Dark, text_scale: 0.85})
+
+      assert_in_delta on_screen(title_size(MobBezalel.UI.top_bar("Study", :leather))),
+                      23 * 0.85,
+                      1.0e-9
+
+      assert Enum.all?(
+               labels(MobBezalel.UI.tab_bar(tabs, 0, :leather)),
+               &(on_screen(&1.text_size) < 9.5)
+             )
+    end
+
+    test "a chip's label is cut shorter at a larger text size" do
+      name = String.duplicate("long name ", 6) <> "notes.pdf"
+
+      label = fn ->
+        [l] =
+          for %{type: :text, props: %{text: t}} <-
+                nodes(MobBezalel.UI.attachment_chip(:file, name, nil)),
+              do: t
+
+        l
+      end
+
+      default = label.()
+      Mob.Theme.set({MobBezalel.Dark, text_scale: 1.5})
+      larger = label.()
+      assert String.ends_with?(larger, "….pdf")
+      assert String.length(larger) < String.length(default)
+    end
+  end
+
   defp send_bg(tree) do
     [bg] = for %{props: %{on_tap: :send, background: bg}} <- nodes(tree), do: bg
     bg
@@ -288,6 +342,14 @@ defmodule MobBezalelTest do
 
   defp tap_or_node(%{type: :box, props: %{on_tap: :send}}), do: %{on_tap: :send}
   defp tap_or_node(node), do: node
+
+  # What reaches native: the renderer multiplies every text_size by text_scale.
+  defp on_screen(size), do: size * MobBezalel.text_scale()
+
+  defp title_size(tree) do
+    [size] = for %{props: %{font: :display, text_size: s}} <- nodes(tree), do: s
+    size
+  end
 
   defp labels(tree), do: for(%{type: :text, props: p} <- nodes(tree), do: p)
 
