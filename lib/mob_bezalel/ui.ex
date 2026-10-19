@@ -369,7 +369,7 @@ defmodule MobBezalel.UI do
             <Text text={title} font={:ui_semibold} text_size={12} letter_spacing={0.3} text_color={:secondary} max_lines={1} weight={1} />
             {chevron}
           </Row>
-          <Text text={first} text_size={14.5} line_height={1.45} text_color={:on_background} max_lines={lines} />
+          <Text text={first} text_size={14.5} line_height={1.55} text_color={:on_background} max_lines={lines} />
         </Column>
         {body}
       </Column>

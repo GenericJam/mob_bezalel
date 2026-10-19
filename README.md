@@ -56,7 +56,8 @@ MobBezalel.Palette.brand().tekhelet              # 0xFF1C2A44
 ## UI composites and icons
 
 `MobBezalel.UI` builds the design's recurring pieces as ordinary Mob render
-trees: `top_bar/3`, `bar_button/3`, `tab_bar/4` (more than four tabs
+trees: `top_bar/3`, `bar_button/3`, `bar_icon_button/4` (an icon in the
+bar's outline pill, e.g. a menu's ⋯), `tab_bar/4` (more than four tabs
 narrow its ends and labels, so five fit a 360 pt phone at the default font
 scale), `card/2`, `kicker/2`,
 `pill_button/4`, `chip/2`, `segmented/2`, `block/6`, `markdown_style/1`,
@@ -72,6 +73,10 @@ scale), `card/2`, `kicker/2`,
 - `attachment_chip/3`: a pill with a kind icon, a short label and a close
   glyph that sends `on_remove` (none when it's `nil`).
 - `menu_row/4`: a full-width row with an icon, a title and an optional note.
+- `consult_block/5`: another model's message (a critique, a second
+  opinion) set apart from the answer's blocks: the title in the accent
+  over a first line cut to two lines until opened; its Markdown body takes
+  `markdown_style(:consult)`.
 
 `MobBezalel.Icons.icon/3` draws the design's Lucide glyphs as `<Canvas>`
 nodes; `Icons.names/0` lists them: `:study`, `:conversations`, `:workshop`,
