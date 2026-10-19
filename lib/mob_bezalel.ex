@@ -63,7 +63,7 @@ defmodule MobBezalel do
   theme (`Mob.Theme.set({MobBezalel.Dark, text_scale: 1.3})`): the renderer
   multiplies every `text_size` by it, on top of the phone's own font scale.
   Chrome with fixed room (the top bar's title and buttons, the tab bar's
-  labels, a segmented control) grows only up to a cap (`capped_size/2`);
+  labels, a segmented control, a pill button's label) grows only up to a cap (`capped_size/2`);
   the chip's label is cut by `text_scale/0`. `UI.markdown_style/1`'s
   `text_size` is a top-level prop of the Markdown view, so the renderer
   scales it like any other.
