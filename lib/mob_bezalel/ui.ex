@@ -203,7 +203,9 @@ defmodule MobBezalel.UI do
       end
 
     height = Keyword.get(opts, :height, 46)
-    size = Keyword.get(opts, :text_size, 14)
+    # The label sits in a fixed height and often shares a row with another
+    # pill (weight: 1), so it grows only up to a cap like the other chrome.
+    size = MobBezalel.capped_size(Keyword.get(opts, :text_size, 14), 1.15)
 
     # A Box, not a Row: only Box draws corner_radius and borders on both
     # platforms. align: "center" centers the label both ways in the fixed

@@ -303,6 +303,9 @@ defmodule MobBezalelTest do
       [seg | _] = labels(MobBezalel.UI.segmented([{"Light", :l}, {"Dark", :d}], 0))
       assert_in_delta on_screen(seg.text_size), 13 * 1.15, 1.0e-9
 
+      [pill] = labels(MobBezalel.UI.pill_button("Restore default", :restore, :outline))
+      assert_in_delta on_screen(pill.text_size), 14 * 1.15, 1.0e-9
+
       Mob.Theme.set({MobBezalel.Dark, text_scale: 0.85})
 
       assert_in_delta on_screen(title_size(MobBezalel.UI.top_bar("Study", :leather))),
