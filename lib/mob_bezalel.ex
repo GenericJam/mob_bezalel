@@ -55,6 +55,18 @@ defmodule MobBezalel do
 
   Instrument Sans is never used for scripture. Colors without a theme slot
   (user bubble, bars, overlays, brand materials) are in `MobBezalel.Palette`.
+
+  ## Text size
+
+  The sizes here and in `MobBezalel.UI` are the design's, at the user's
+  default text size. The user's choice is Mob's `text_scale`, set with the
+  theme (`Mob.Theme.set({MobBezalel.Dark, text_scale: 1.3})`): the renderer
+  multiplies every `text_size` by it, on top of the phone's own font scale.
+  Chrome with fixed room (the top bar's title and buttons, the tab bar's
+  labels, a segmented control) grows only up to a cap (`capped_size/2`);
+  the chip's label is cut by `text_scale/0`. `UI.markdown_style/1`'s
+  `text_size` is a top-level prop of the Markdown view, so the renderer
+  scales it like any other.
   """
 
   alias MobBezalel.Palette
@@ -92,6 +104,23 @@ defmodule MobBezalel do
   def mode do
     bg = Mob.Theme.current().background
     Enum.find(Palette.modes(), &(Palette.roles(&1).background == bg))
+  end
+
+  @doc "The user's text size: the active theme's `text_scale` (1.0 by default)."
+  @spec text_scale() :: number()
+  def text_scale, do: Mob.Theme.current().text_scale
+
+  @doc """
+  `size` as a `text_size` for text in fixed room (a bar, a tab label, a
+  segment): it follows a smaller text size down, but grows only up to
+  `cap` times the design's size, however large the user's choice. The
+  renderer multiplies the result by `text_scale/0`, so this divides it back
+  out above the cap.
+  """
+  @spec capped_size(number(), number()) :: number()
+  def capped_size(size, cap) do
+    scale = text_scale()
+    if scale <= cap, do: size, else: size * cap / scale
   end
 
   @doc """
