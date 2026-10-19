@@ -36,7 +36,8 @@ defmodule MobBezalel.MixProject do
   defp deps do
     [
       # 0.9.18: MobBezalel.System follows the OS light/dark flip (MOB-479).
-      {:mob, "~> 0.9.18"},
+      # 0.9.23: Mob.Theme text_scale, read by MobBezalel.text_scale/0.
+      {:mob, "~> 0.9.23"},
       # Test-only: the manifest test runs the real style validator, which
       # knows `assets.fonts` from 0.7.25 (MOB-476).
       {:mob_dev, "~> 0.7.25", only: [:dev, :test], runtime: false},
