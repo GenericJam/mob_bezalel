@@ -62,6 +62,32 @@ defmodule MobBezalel.UI do
   end
 
   @doc """
+  `bar_button/3` with an icon (`MobBezalel.Icons`) in place of the label:
+  a menu's ⋯ in the top bar. `opts`: `:id`.
+  """
+  @spec bar_icon_button(atom(), tap(), Palette.cover(), keyword()) :: map()
+  def bar_icon_button(icon, tap, cover, opts \\ []) do
+    c = chrome(cover)
+
+    %{
+      type: :box,
+      props:
+        reject_nil(%{
+          id: Keyword.get(opts, :id),
+          border_color: c.bar_line,
+          border_width: 1,
+          corner_radius: 16,
+          width: 40,
+          height: 32,
+          align: "center",
+          fill_width: false,
+          on_tap: tap
+        }),
+      children: [MobBezalel.Icons.icon(icon, 16, c.on_bar)]
+    }
+  end
+
+  @doc """
   The bottom-sheet look from the design, as `<Sheet>` props: page-ground
   background, 28 pt top corners, a warm scrim, and a 40×5 handle in the line
   color. Pass them through with the sheet's other props:
@@ -318,25 +344,61 @@ defmodule MobBezalel.UI do
   end
 
   @doc """
-  The look of a block's Markdown body (`block/6`'s `kind`), as the props of
+  Another model's message in the chat (a CONSULT block: a critique, a
+  second opinion), set apart from the answering model's blocks: the
+  surface ground inside an accent hairline, `title` ("Pushback · Gemini 3
+  Pro") in the accent over the first line (two lines at most while
+  closed), a chevron, and when `open?` the rest in the ink (plain text or
+  a node styled by `markdown_style(:consult)`). Tapping the head toggles
+  it.
+  """
+  @spec consult_block(String.t(), String.t(), String.t() | map(), boolean(), tap()) :: map()
+  def consult_block(title, first, rest, open?, tap) do
+    chevron =
+      MobBezalel.Icons.icon(if(open?, do: :chevron_up, else: :chevron_down), 14, :secondary,
+        stroke: 2.75
+      )
+
+    {lines, body} = if open?, do: {nil, block_body(rest, 14.5, :on_background)}, else: {2, []}
+
+    ~MOB"""
+    <Box background={:surface} border_color={:secondary} border_width={1} corner_radius={16} fill_width={true}>
+      <Column fill_width={true}>
+        <Column gap={6} padding_left={14} padding_right={12} padding_top={12} padding_bottom={12} fill_width={true} on_tap={tap}>
+          <Row gap={10} align={:center} fill_width={true}>
+            <Text text={title} font={:ui_semibold} text_size={12} letter_spacing={0.3} text_color={:secondary} max_lines={1} weight={1} />
+            {chevron}
+          </Row>
+          <Text text={first} text_size={14.5} line_height={1.55} text_color={:on_background} max_lines={lines} />
+        </Column>
+        {body}
+      </Column>
+    </Box>
+    """
+  end
+
+  @doc """
+  The look of a block's Markdown body (`block/6`'s `kind`, or `:consult`
+  for `consult_block/5`), as the props of
   a native Markdown view (mob_markdown's `MobMarkdown.view/3`): the block's
   size and ink, headings in EB Garamond, emphasis in Instrument Sans
   SemiBold, code in the system monospace on a ground of its own, links in
   the accent. Colors are the active theme's mode, so build it at render
   time; faces are in platform blocks, which the renderer resolves.
   """
-  @spec markdown_style(:summary | :aside) :: map()
+  @spec markdown_style(:summary | :aside | :consult) :: map()
   def markdown_style(kind \\ :summary) do
     r = Palette.roles(MobBezalel.mode() || :dark)
     fonts = MobBezalel.fonts()
 
     # Code sits on a hairline-colored ground in a summary (on the page
-    # ground); in an aside (on the surface) the page ground, since muted ink
-    # on the hairline color is too faint at night.
+    # ground); in an aside or a consult (on the surface) the page ground,
+    # since muted ink on the hairline color is too faint at night.
     {ink, size, code_ground} =
       case kind do
         :summary -> {r.ink, 15.5, r.line}
         :aside -> {r.muted, 14, r.background}
+        :consult -> {r.ink, 14.5, r.background}
       end
 
     faces = %{
